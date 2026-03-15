@@ -1,0 +1,6 @@
+<Solution>
+  <Project Path="EtikettenGenerator.AppHost/EtikettenGenerator.AppHost.csproj" />
+  <Project Path="EtikettenGenerator.ServiceDefaults/EtikettenGenerator.ServiceDefaults.csproj" />
+  <Project Path="EtikettenGenerator.Tests/EtikettenGenerator.Tests.csproj" />
+  <Project Path="EtikettenGenerator.Web/EtikettenGenerator.Web.csproj" />
+</Solution>

@@ -1,0 +1,5 @@
+{
+  "enabledPlugins": {
+    "dotnet-claude-kit@dotnet-claude-kit": true
+  }
+}

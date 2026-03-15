@@ -1,0 +1,78 @@
+@using EtikettenGenerator.Web.Models
+
+<MudDialog>
+    <TitleContent>
+        <MudText Typo="Typo.h6">Startpositionen wählen</MudText>
+    </TitleContent>
+    <DialogContent>
+        <MudStack Spacing="2">
+            <MudText Typo="Typo.body2">
+                Wählen Sie @SelectedMembers.Count Position(en) im 4×10-Raster aus.
+            </MudText>
+
+            <MudText Typo="Typo.caption" Color="@(_allPositionsFilled ? Color.Success : Color.Default)">
+                @_chosenPositions.Count von @SelectedMembers.Count Positionen gewählt
+            </MudText>
+
+            <div style="display:grid; grid-template-columns: repeat(4, 1fr); gap: 6px; max-width: 320px;">
+                @for (var pos = 1; pos <= 40; pos++)
+                {
+                    var position = pos;
+                    var isChosen = _chosenPositions.Contains(position);
+                    var isDisabled = !isChosen && _chosenPositions.Count >= SelectedMembers.Count;
+
+                    <MudButton Variant="@(isChosen ? Variant.Filled : Variant.Outlined)"
+                               Color="@(isChosen ? Color.Success : Color.Default)"
+                               Disabled="isDisabled"
+                               Size="Size.Small"
+                               Style="min-width:60px; font-size:0.75rem;"
+                               OnClick="() => TogglePosition(position)"
+                               aria-label="@($"Position {position} {(isChosen ? "abwählen" : "auswählen")}")">
+                        @position
+                    </MudButton>
+                }
+            </div>
+        </MudStack>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel" aria-label="Abbrechen">Abbrechen</MudButton>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary"
+                   Disabled="!_allPositionsFilled"
+                   OnClick="Confirm"
+                   aria-label="Bestätigen">
+            Bestätigen
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] private MudDialogInstance MudDialog { get; set; } = null!;
+
+    [Parameter] public List<Member> SelectedMembers { get; set; } = [];
+
+    private readonly HashSet<int> _chosenPositions = [];
+    private bool _allPositionsFilled => _chosenPositions.Count == SelectedMembers.Count
+                                        && SelectedMembers.Count > 0;
+
+    private void TogglePosition(int position)
+    {
+        if (_chosenPositions.Contains(position))
+            _chosenPositions.Remove(position);
+        else if (_chosenPositions.Count < SelectedMembers.Count)
+            _chosenPositions.Add(position);
+    }
+
+    private void Confirm()
+    {
+        if (!_allPositionsFilled) return;
+
+        var orderedPositions = _chosenPositions.OrderBy(p => p).ToList();
+        var pairs = orderedPositions
+            .Select((pos, i) => (pos, SelectedMembers[i]))
+            .ToList<(int Position, Member Member)>();
+
+        MudDialog.Close(DialogResult.Ok(pairs));
+    }
+
+    private void Cancel() => MudDialog.Cancel();
+}

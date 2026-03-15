@@ -1,0 +1,231 @@
+@page "/"
+@rendermode InteractiveServer
+@inject CsvImportService CsvImportService
+@inject WordExportService WordExportService
+@inject IDialogService DialogService
+@inject IJSRuntime JS
+@inject ILogger<Home> Logger
+
+<PageTitle>Etiketten-Generator</PageTitle>
+
+<MudStack Spacing="3">
+    @* CSV Upload *@
+    <MudPaper Elevation="1" Class="pa-4">
+        <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="3">
+            <MudText Typo="Typo.subtitle1">CSV-Datei hochladen:</MudText>
+            <InputFile id="csvFileInput" OnChange="OnFileSelected" accept=".csv"
+                       style="display:none" aria-label="CSV-Datei auswählen" />
+            <MudButton Variant="Variant.Outlined" Color="Color.Primary"
+                       OnClick="TriggerFileInput" StartIcon="@Icons.Material.Filled.FileUpload">
+                Datei auswählen
+            </MudButton>
+            @if (_fileName is not null)
+            {
+                <MudText Typo="Typo.body2" Color="Color.Secondary">@_fileName</MudText>
+            }
+            @if (_isLoading)
+            {
+                <MudProgressCircular Size="Size.Small" Indeterminate="true" />
+            }
+        </MudStack>
+    </MudPaper>
+
+    @* Error / Warning Alerts *@
+    @if (_errorMessage is not null)
+    {
+        <MudAlert Severity="Severity.Error" Dense="true" ShowCloseIcon="true"
+                  CloseIconClicked="() => _errorMessage = null">
+            @_errorMessage
+        </MudAlert>
+    }
+
+    @* Toolbar *@
+    @if (_members.Count > 0)
+    {
+        <MudPaper Elevation="1" Class="pa-3">
+            <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="3">
+                <MudCheckBox T="bool?" Value="_selectAllState" ValueChanged="OnSelectAllChanged"
+                             TriState="true" Label="Alle auswählen"
+                             aria-label="Alle Mitglieder auswählen" />
+                <MudSpacer />
+                <MudText Typo="Typo.body2">
+                    @_selectedCount von @_members.Count ausgewählt
+                </MudText>
+                <MudButton Variant="Variant.Filled" Color="Color.Primary"
+                           StartIcon="@Icons.Material.Filled.Label"
+                           Disabled="_selectedCount == 0 || _isExporting"
+                           OnClick="OnCreateLabelsClick"
+                           aria-label="Etiketten erstellen">
+                    @if (_isExporting)
+                    {
+                        <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+                    }
+                    Etiketten erstellen
+                </MudButton>
+            </MudStack>
+        </MudPaper>
+
+        @* Member Table *@
+        <MudTable Items="_members" Striped="true" Hover="true" Dense="true"
+                  FixedHeader="true" Height="60vh" SortLabel="Sortieren">
+            <HeaderContent>
+                <MudTh></MudTh>
+                <MudTh><MudTableSortLabel SortBy="new Func<Member, object>(m => m.Nachname)">Nachname</MudTableSortLabel></MudTh>
+                <MudTh><MudTableSortLabel SortBy="new Func<Member, object>(m => m.Vorname)">Vorname</MudTableSortLabel></MudTh>
+                <MudTh>Med. Qualifikation</MudTh>
+                <MudTh>Dienststellung</MudTh>
+                <MudTh>Fahrerlaubnis</MudTh>
+                <MudTh>RD-Fortbildung</MudTh>
+            </HeaderContent>
+            <RowTemplate>
+                <MudTd>
+                    <MudCheckBox T="bool" Value="context.IsSelected"
+                                 ValueChanged="v => OnMemberSelectionChanged(context, v)"
+                                 aria-label="@($"{context.Nachname} auswählen")" />
+                </MudTd>
+                <MudTd DataLabel="Nachname">@context.Nachname</MudTd>
+                <MudTd DataLabel="Vorname">@context.Vorname</MudTd>
+                <MudTd DataLabel="Med. Qualifikation">@context.MedQualifikation</MudTd>
+                <MudTd DataLabel="Dienststellung">@context.Dienststellung</MudTd>
+                <MudTd DataLabel="Fahrerlaubnis">@context.Fahrerlaubnis</MudTd>
+                <MudTd DataLabel="RD-Fortbildung">
+                    @if (context.HatRettungsdienstfortbildung)
+                    {
+                        <MudIcon Icon="@Icons.Material.Filled.Check" Color="Color.Success" Size="Size.Small" />
+                    }
+                    else
+                    {
+                        <MudIcon Icon="@Icons.Material.Filled.Close" Color="Color.Error" Size="Size.Small" />
+                    }
+                </MudTd>
+            </RowTemplate>
+        </MudTable>
+    }
+</MudStack>
+
+@code {
+    private List<Member> _members = [];
+    private string? _errorMessage;
+    private string? _fileName;
+    private bool _isLoading;
+    private bool _isExporting;
+
+    private int _selectedCount => _members.Count(m => m.IsSelected);
+
+    private bool? _selectAllState => _members.Count == 0
+        ? false
+        : _selectedCount == _members.Count
+            ? true
+            : _selectedCount == 0
+                ? false
+                : null;
+
+    private async Task TriggerFileInput()
+    {
+        await JS.InvokeVoidAsync("triggerClick", "csvFileInput");
+    }
+
+    private async Task OnFileSelected(InputFileChangeEventArgs e)
+    {
+        _errorMessage = null;
+        _fileName = e.File.Name;
+        _isLoading = true;
+        StateHasChanged();
+
+        try
+        {
+            using var stream = e.File.OpenReadStream(maxAllowedSize: 10 * 1024 * 1024);
+            _members = (await CsvImportService.ImportAsync(stream)).ToList();
+        }
+        catch (CsvImportException ex)
+        {
+            _errorMessage = ex.Message;
+            _members = [];
+            Logger.LogWarning("CSV import failed: {Message}", ex.Message);
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = $"Fehler beim Einlesen der Datei: {ex.Message}";
+            _members = [];
+            Logger.LogError(ex, "Unexpected error during CSV import");
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private void OnMemberSelectionChanged(Member member, bool selected)
+    {
+        member.IsSelected = selected;
+    }
+
+    private void OnSelectAllChanged(bool? value)
+    {
+        var select = value ?? true;
+        foreach (var m in _members)
+            m.IsSelected = select;
+    }
+
+    private async Task OnCreateLabelsClick()
+    {
+        _errorMessage = null;
+
+        if (_members.Count == 0)
+        {
+            _errorMessage = "Bitte zuerst eine CSV-Datei laden.";
+            return;
+        }
+
+        var selected = _members.Where(m => m.IsSelected).ToList();
+        if (selected.Count == 0)
+        {
+            _errorMessage = "Bitte mindestens ein Mitglied auswählen.";
+            return;
+        }
+
+        if (selected.Count == _members.Count)
+        {
+            // Full selection — export immediately with sequential positions
+            await ExportAsync(selected.Select((m, i) => (i + 1, m)).ToList());
+        }
+        else
+        {
+            // Partial selection — open position picker dialog
+            var parameters = new DialogParameters<PositionPickerDialog>
+            {
+                { d => d.SelectedMembers, selected }
+            };
+            var options = new DialogOptions { MaxWidth = MaxWidth.Small, CloseOnEscapeKey = true, BackdropClick = false };
+            var dialog = await DialogService.ShowAsync<PositionPickerDialog>("Startpositionen wählen", parameters, options);
+            var result = await dialog.Result;
+
+            if (result is { Canceled: false, Data: List<(int Position, Member Member)> pairs })
+                await ExportAsync(pairs);
+        }
+    }
+
+    private async Task ExportAsync(IReadOnlyList<(int Position, Member Member)> pairs)
+    {
+        _isExporting = true;
+        StateHasChanged();
+
+        try
+        {
+            var bytes = await Task.Run(() => WordExportService.Export(pairs));
+            var fileName = $"Etiketten_{DateTime.Now:yyyy-MM-dd}.docx";
+            await JS.InvokeVoidAsync("downloadFile", fileName,
+                "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+                Convert.ToBase64String(bytes));
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = $"Fehler beim Erstellen der Etiketten: {ex.Message}";
+            Logger.LogError(ex, "Word export failed");
+        }
+        finally
+        {
+            _isExporting = false;
+        }
+    }
+}
