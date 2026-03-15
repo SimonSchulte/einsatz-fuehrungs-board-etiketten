@@ -1,10 +1,10 @@
 @page "/"
-@rendermode InteractiveServer
 @inject CsvImportService CsvImportService
 @inject WordExportService WordExportService
 @inject IDialogService DialogService
 @inject IJSRuntime JS
 @inject ILogger<Home> Logger
+@inject ISnackbar Snackbar
 
 <PageTitle>Etiketten-Generator</PageTitle>
 
@@ -72,12 +72,19 @@
                 <MudTh></MudTh>
                 <MudTh><MudTableSortLabel SortBy="new Func<Member, object>(m => m.Nachname)">Nachname</MudTableSortLabel></MudTh>
                 <MudTh><MudTableSortLabel SortBy="new Func<Member, object>(m => m.Vorname)">Vorname</MudTableSortLabel></MudTh>
-                <MudTh>Med. Qualifikation</MudTh>
-                <MudTh>Dienststellung</MudTh>
-                <MudTh>Fahrerlaubnis</MudTh>
-                <MudTh>RD-Fortbildung</MudTh>
+                <MudTh>Med. Qual.</MudTh>
+                <MudTh>Dienst</MudTh>
+                <MudTh>FS_1</MudTh>
+                <MudTh>FS_2</MudTh>
+                <MudTh>FS_3</MudTh>
+                <MudTh>RDF</MudTh>
             </HeaderContent>
             <RowTemplate>
+                @{
+                    var (fs1, fs2, fs3) = GetFsDisplay(context.Fahrerlaubnis);
+                    var med    = WordExportService.MapMedQualifikation(context.MedQualifikation);
+                    var dienst = WordExportService.MapDienststellung(context.Dienststellung);
+                }
                 <MudTd>
                     <MudCheckBox T="bool" Value="context.IsSelected"
                                  ValueChanged="v => OnMemberSelectionChanged(context, v)"
@@ -85,19 +92,30 @@
                 </MudTd>
                 <MudTd DataLabel="Nachname">@context.Nachname</MudTd>
                 <MudTd DataLabel="Vorname">@context.Vorname</MudTd>
-                <MudTd DataLabel="Med. Qualifikation">@context.MedQualifikation</MudTd>
-                <MudTd DataLabel="Dienststellung">@context.Dienststellung</MudTd>
-                <MudTd DataLabel="Fahrerlaubnis">@context.Fahrerlaubnis</MudTd>
-                <MudTd DataLabel="RD-Fortbildung">
-                    @if (context.HatRettungsdienstfortbildung)
-                    {
-                        <MudIcon Icon="@Icons.Material.Filled.Check" Color="Color.Success" Size="Size.Small" />
-                    }
-                    else
-                    {
-                        <MudIcon Icon="@Icons.Material.Filled.Close" Color="Color.Error" Size="Size.Small" />
-                    }
+                <MudTd DataLabel="Med. Qual.">
+                    @if (GetMedStyle(med) is { } medStyle)
+                    { <span style="@medStyle">@med</span> }
+                    else { <text>@med</text> }
                 </MudTd>
+                <MudTd DataLabel="Dienst">
+                    <span style="@GetDienstStyle(dienst)">@dienst</span>
+                </MudTd>
+                <MudTd DataLabel="FS_1">
+                    @if (GetFsStyle(fs1) is { } fs1Style)
+                    { <span style="@fs1Style">@fs1</span> }
+                    else { <text>@fs1</text> }
+                </MudTd>
+                <MudTd DataLabel="FS_2">
+                    @if (GetFsStyle(fs2) is { } fs2Style)
+                    { <span style="@fs2Style">@fs2</span> }
+                    else { <text>@fs2</text> }
+                </MudTd>
+                <MudTd DataLabel="FS_3">
+                    @if (GetFsStyle(fs3) is { } fs3Style)
+                    { <span style="@fs3Style">@fs3</span> }
+                    else { <text>@fs3</text> }
+                </MudTd>
+                <MudTd DataLabel="RDF">@(context.HatRettungsdienstfortbildung ? "RDF" : "-")</MudTd>
             </RowTemplate>
         </MudTable>
     }
@@ -111,6 +129,49 @@
     private bool _isExporting;
 
     private int _selectedCount => _members.Count(m => m.IsSelected);
+
+    private static (string Fs1, string Fs2, string Fs3) GetFsDisplay(string fahrerlaubnis)
+    {
+        var (fs1, fs2, fs3) = WordExportService.ParseFahrerlaubnis(fahrerlaubnis);
+        return (
+            string.IsNullOrEmpty(fs1) ? "-" : fs1,
+            string.IsNullOrEmpty(fs2) ? "-" : fs2,
+            string.IsNullOrEmpty(fs3) ? "-" : fs3
+        );
+    }
+
+    private const string ChipCss =
+        "display:inline-flex;align-items:center;padding:0 8px;height:22px;" +
+        "border-radius:11px;font-size:0.75rem;font-weight:600;white-space:nowrap;";
+
+    private static string? GetMedStyle(string abbrev) => abbrev switch
+    {
+        "EH"          => ChipCss + "background:#C7CCD9;color:#000548;",
+        "SH"          => ChipCss + "background:#85C99B;color:#000548;",
+        "RH"          => ChipCss + "background:#6B9ED4;color:#FFFFFF;",
+        "RS"          => ChipCss + "background:#DEE100;color:#000548;",
+        "RA" or "NFS" => ChipCss + "background:#EB003C;color:#FFFFFF;",
+        "NA"          => ChipCss + "background:#4A6FB8;color:#FFFFFF;",
+        _             => null,
+    };
+
+    private static string GetDienstStyle(string abbrev) => abbrev switch
+    {
+        "GF"           => ChipCss + "background:#4A6FB8;color:#FFFFFF;",
+        "ZF" or "GdSA" => ChipCss + "background:#EB003C;color:#FFFFFF;",
+        "VF"           => ChipCss + "background:#FFFFFF;color:#000548;border:1px solid #000548;",
+        _              => ChipCss + "background:#C7CCD9;color:#000548;",
+    };
+
+    private static string? GetFsStyle(string abbrev) => abbrev switch
+    {
+        "B"                  => ChipCss + "background:#e7e6e6;color:#000548;",
+        "C1"                 => ChipCss + "background:#6B9ED4;color:#FFFFFF;",
+        "C"                  => ChipCss + "background:#4A6FB8;color:#000548;",
+        "A" or "A1" or "A2"  => ChipCss + "background:#00b0f0;color:#FFFFFF;",
+        "E"                  => ChipCss + "background:#7c7c7c;color:#FFFFFF;",
+        _                    => null,
+    };
 
     private bool? _selectAllState => _members.Count == 0
         ? false
@@ -217,6 +278,7 @@
             await JS.InvokeVoidAsync("downloadFile", fileName,
                 "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
                 Convert.ToBase64String(bytes));
+            Snackbar.Add($"Download gestartet: {fileName}", Severity.Success);
         }
         catch (Exception ex)
         {
@@ -226,6 +288,7 @@
         finally
         {
             _isExporting = false;
+            StateHasChanged();
         }
     }
 }

@@ -1,5 +1,6 @@
 using EtikettenGenerator.Web.Components;
 using EtikettenGenerator.Web.Services;
+using MudBlazor;
 using MudBlazor.Services;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -9,7 +10,11 @@ builder.AddServiceDefaults();
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
 
-builder.Services.AddMudServices();
+builder.Services.AddMudServices(config =>
+{
+    config.SnackbarConfiguration.PositionClass = Defaults.Classes.Position.BottomRight;
+    config.SnackbarConfiguration.VisibleStateDuration = 4000;
+});
 
 builder.Services.AddScoped<CsvImportService>();
 builder.Services.AddScoped<WordExportService>();

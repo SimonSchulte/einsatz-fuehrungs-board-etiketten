@@ -10,7 +10,10 @@
       "Bash(dotnet-script)",
       "Read(//c/Users/gaend/.nuget/packages/mudblazor/7.16.0/lib/net8.0//**)",
       "Bash(dotnet-decompiler:*)",
-      "Bash(dotnet-ilspy:*)"
+      "Bash(dotnet-ilspy:*)",
+      "Bash(grep:*)",
+      "Bash(unzip:*)",
+      "Bash(dotnet test:*)"
     ]
   }
 }

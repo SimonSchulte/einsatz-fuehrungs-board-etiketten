@@ -159,17 +159,17 @@ public sealed record Member
 ### Layout
 
 ```
-┌─────────────────────────────────────────────────────────┐
-│  📂 CSV-Datei hochladen: [Datei auswählen]              │
-│  ⚠️ [Fehlermeldungen / Warnungen]                       │
-├─────────────────────────────────────────────────────────┤
-│  [☑ Alle auswählen]              [🏷️ Etiketten erstellen] │
-├──┬────────────┬──────────┬────────────┬─────────────────┤
-│☑ │ Nachname   │ Vorname  │ med. Qual. │ Dienststell. │ … │
-├──┼────────────┼──────────┼────────────┼─────────────────┤
-│☑ │ Mustermann │ Max      │ Notarzt    │ …            │ … │
-│☐ │ …          │ …        │ …          │ …            │ … │
-└──┴────────────┴──────────┴────────────┴─────────────────┘
+┌──────────────────────────────────────────────────────────────────┐
+│  📂 CSV-Datei hochladen: [Datei auswählen]                       │
+│  ⚠️ [Fehlermeldungen / Warnungen]                                │
+├──────────────────────────────────────────────────────────────────┤
+│  [☑ Alle auswählen]                   [🏷️ Etiketten erstellen]   │
+├──┬──────────┬─────────┬────────┬───────┬────┬────┬────┬─────────┤
+│☑ │ Nachname │ Vorname │ Med.Q. │ Dienst│FS_1│FS_2│FS_3│   RDF   │
+├──┼──────────┼─────────┼────────┼───────┼────┼────┼────┼─────────┤
+│☑ │ Muster.. │ Max     │[RS]    │ [GF]  │[B] │ -  │ -  │   RDF   │
+│☐ │ …        │ …       │ …      │  …    │ …  │ …  │ …  │    -    │
+└──┴──────────┴─────────┴────────┴───────┴────┴────┴────┴─────────┘
 ```
 
 ### Tabellenspalten
@@ -177,10 +177,46 @@ public sealed record Member
 1. Checkbox (Selektion)
 2. Nachname
 3. Vorname
-4. med. Qualifikation
-5. Dienststellung
-6. Fahrerlaubnis
-7. Rettungsdienstfortbildung (`✓` / `✗`)
+4. Med. Qual. — Kürzel als farbiger Chip (z.B. `RS`, `NA`, `-`)
+5. Dienst — Kürzel als farbiger Chip (z.B. `GF`, `HF`)
+6. FS_1 — höchste PKW/LKW-Klasse als farbiger Chip
+7. FS_2 — `E` als farbiger Chip, wenn Anhänger-Klasse vorhanden
+8. FS_3 — höchste Motorrad-Klasse als farbiger Chip (AM wird ignoriert)
+9. RDF — `RDF` wenn Rettungsdienstfortbildung vorhanden, sonst `-`
+
+### Chip-Farbschema
+
+#### Taktisch (Dienst-Spalte)
+
+| Kürzel        | Hintergrund | Text      |
+|---------------|-------------|-----------|
+| HF (default)  | `#C7CCD9`   | `#000548` |
+| GF            | `#4A6FB8`   | `#FFFFFF` |
+| ZF, GdSA      | `#EB003C`   | `#FFFFFF` |
+| VF            | `#FFFFFF`   | `#000548` + Rahmen `#000548` |
+
+#### Medizinisch (Med. Qual.-Spalte)
+
+| Kürzel   | Hintergrund | Text      |
+|----------|-------------|-----------|
+| EH       | `#C7CCD9`   | `#000548` |
+| SH       | `#85C99B`   | `#000548` |
+| RH       | `#6B9ED4`   | `#FFFFFF` |
+| RS       | `#DEE100`   | `#000548` |
+| RA, NFS  | `#EB003C`   | `#FFFFFF` |
+| NA       | `#4A6FB8`   | `#FFFFFF` |
+| `-`      | kein Chip   | —         |
+
+#### Fahrerlaubnis (FS_1 / FS_2 / FS_3)
+
+| Kürzel      | Hintergrund | Text      |
+|-------------|-------------|-----------|
+| B           | `#e7e6e6`   | `#000548` |
+| C1          | `#6B9ED4`   | `#FFFFFF` |
+| C           | `#4A6FB8`   | `#FFFFFF` |
+| A, A1, A2   | `#00b0f0`   | `#FFFFFF` |
+| E           | `#7c7c7c`   | `#FFFFFF` |
+| `-`         | kein Chip   | —         |
 
 ### Besondere UI-Anforderungen
 
